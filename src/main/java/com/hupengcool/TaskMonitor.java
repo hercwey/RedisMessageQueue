@@ -16,8 +16,8 @@ public class TaskMonitor {
 
     private int interval = DEFAULT_INTERVAL;
 
-    private volatile boolean start = false;
-    private volatile boolean close = false;
+    private AtomicBoolean started = new AtomicBoolean(false);
+    private AtomicBoolean closed = new AtomicBoolean(false);
 
     private ScheduledExecutorService scheduler = null;
 
@@ -37,11 +37,10 @@ public class TaskMonitor {
         this.interval = interval;
     }
 
-    public synchronized void start() {
-        if (start == true) {
+    public void start() {
+         if (!started.compareAndSet(false, true)) {
             throw new IllegalStateException("this TaskMonitor already start!");
         }
-        start = true;
         if (scheduler == null) {
             scheduler = Executors.newSingleThreadScheduledExecutor();
         }
@@ -60,7 +59,7 @@ public class TaskMonitor {
     }
 
     public synchronized void close() throws IOException {
-        if (close == true) {
+        if (!closed.compareAndSet(false, true)) {
             throw new IllegalStateException("this TaskMonitor already close!");
         }
 
