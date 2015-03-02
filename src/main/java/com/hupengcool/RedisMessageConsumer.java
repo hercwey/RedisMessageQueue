@@ -17,8 +17,8 @@ public class RedisMessageConsumer {
     private RedisQueue redisQueue;
     private MessageListener listener;
     private ExecutorService exec = null;
-    private volatile boolean close = false;
-    private volatile boolean start = false;
+    private AtomicBoolean started = new AtomicBoolean(false);
+    private AtomicBoolean closed = new AtomicBoolean(false);
 
     public RedisMessageConsumer(RedisQueue redisQueue, MessageListener listener) {
         this.redisQueue = redisQueue;
@@ -47,8 +47,8 @@ public class RedisMessageConsumer {
         }
     }
 
-    public synchronized void start() {
-        if (start == true) {
+    public void start() {
+         if (!started.compareAndSet(false, true)) {
             throw new IllegalStateException("this consumer already start!");
         }
         if (exec == null) {
@@ -57,20 +57,18 @@ public class RedisMessageConsumer {
         exec.submit(new Runnable() {
             @Override
             public void run() {
-                while (!close) {
+                while (!closed.get()) {
                     consume();
                 }
             }
         });
-        start = true;
     }
 
 
-    public synchronized void close() throws IOException {
-        if (close == true) {
+    public void close() throws IOException {
+       if (closed.compareAndSet(false, true)) {
             throw new IllegalStateException("already close!");
         }
-        close = true;
 
         if (exec != null) {
             ThreadUtils.shutdownAndAwaitTermination(exec, 10, TimeUnit.SECONDS);
